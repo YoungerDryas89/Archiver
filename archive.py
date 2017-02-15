@@ -51,8 +51,11 @@ class Archiver:
                 """
 		shelve.open("archived_urls.dat")["main"] = self.archived_urls
 	def archive(self, url):
+                """
+                :param: url
+                Archves a url into the wayback machine.
+                """
 		l = requests.get(self._arch+url)
-		print(l.headers["Content-Type"])
 		print("Archiving...")
 		self.archived_urls.append(url)
 		self.save_data()
