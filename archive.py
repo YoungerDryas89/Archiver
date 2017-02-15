@@ -2,7 +2,7 @@ from __future__ import print_function
 import sys, time
 import requests, urllib
 import demjson, shelve
-import os.path, mechanize
+import os.path
 
 
 		
@@ -15,12 +15,12 @@ class Archiver:
 		# load data
 		if os.path.isfile("archived_urls.dat"):
 			self.archived_urls = self.load_data()
-		
-	def available(self, url):
-		print("[Checking]: %s\n" % url)
+
+	def available(self, url, silent=False):
+		print("[Checking]: %s\n" % url) if silent == False else 0
 		data = demjson.decode(requests.get(self._machine+url).text)["archived_snapshots"]
 		if "closest" in data: 
-			print(self.print_item(data)) 
+			print(self.print_item(data)) if silent == False else 0
 			return (data["closest"])["available"]
 		return False
 	
@@ -32,7 +32,8 @@ class Archiver:
 	def save_data(self):
 		shelve.open("archived_urls.dat")["main"] = self.archived_urls
 	def archive(self, url):
-		requests.get(self._arch+url)
+		l = requests.get(self._arch+url)
+		print(l.headers["Content-Type"])
 		print("Archiving...")
 		self.archived_urls.append(url)
 		self.save_data()
@@ -47,57 +48,72 @@ class Archiver:
 		if not os.path.isdir(os.getcwd()+"\\saved_webpages"): os.mkdir("saved_webpages")
 		open(os.getcwd()+"\\saved_webpages\\"+filename, 'w').write(requests.get(url).text)
 		if os.path.isfile(os.getcwd()+"\\saved_webpages\\"+filename): print("Done.")
-	@property
-	def last(self):
-		return self.last[len(self.archived_urls)-1]
-	@property
-	def first(self):
-		return self.archived_urls[0]
-		
+
+
+Help = \
+" \
+Usage: archive.py [option] [option2]\n \
+\
+Options:\n \
+        -CH/ch [url] - Check if a URL already exists in the wayback machine and return it's information if it does\n \
+        -ARCH/arch [url] - Archive a URL\n \
+        -CHARCH/charch [url] - Archive a url if it doesn't already exists\n \
+        -OUTT/outt [filename] - Output a list of archived urls in text format\n \
+        -H/h - Print this help message\n \
+        -LARCH/larch - print out a list of urls you archived\n \
+        -SAVE/save [url] [filename] - Save a url into a file"
+
 def main():
-	A = Archiver()
-	command_terms = ["-list_arch", "-ch", "-arch", "-outt", "-char", "-save", "-h"]
-	args = sys.argv[1:len(sys.argv)]
-	if args[0] in command_terms and len(args) == 1:
-		if len(args) == 1:
-			if args[0] == command_terms[6]:
-				print("Syntax: [options] [url]\n-h A list of commands\n-ch Check if a url exists\n-arch Archive a url\n-char Check and archive a url\n-list_arch List all the urls you archived\n-outt [filename] Out put the list of archived urls into a text file\n-save [url] [filename] Saves a webpage")
-				return
-			elif args[0] == command_terms[0]:
-				map(lambda x: print(x), A.archived_urls)
-				return
-		elif len(args) > 1:
-			if args[0] == command_terms[1]:
-				if A.available(args[1]) == True: 
-					print("Already exists.\n")
-					return
-				else: 
-					print("Does not exist.")
-					return
-			elif args[0] == command_terms[2]:
-				A.archive(args[1])
-				return
-			if args[0] == command_terms[3]:
-				A.out_text(args[1])
-				return
-			elif args[0] == command_terms[4]:
-				if A.available(args[1]) == False:
-					A.archive(args[1])
-					return
-				else: 
-					print("[Error]: Already exists.\n")
-					return
-			if args[0] == command_terms[5]:
-						if args[1] == "first":
-							A.save_webpage(A.first, args[2])
-							return
-						elif args[1] == "last": 
-							A.save_webpage(A.last, args[2])
-							return
-				
-	else:
-		print("[Error]: Unknown symbol \'%s\'" % args[0])
-		return 0
+        global Help
+        A = Archiver()
+        args = map(lambda x : x.lower(), sys.argv[1:len(sys.argv)])
+        print(args)
+        if len(args) == 2:
+                print(args[0])
+                if args[0] == "-ch":
+                        if A.available(args[1]) is True:
+                                print("URL found.")
+                        else:
+                                print("URL not found in wayback machine.")
+                        sys.exit(0)
+                elif args[0] == "-arch":
+                        A.archive(args[1])
+                        if A.available(args[1], True) is True:
+                                print("[Success]: Archiving is successful")
+                        else:
+                                print("[Error]: Archiving failed!")
+                        sys.exit(0)
+                elif args[0] == "-charch":
+                        main = A.available(args[1])
+                        if main is True or main == "True":
+                                print("URL exists.")
+                        elif main is False:
+                                print("URL does not exist.")
+                                A.archive(args[1])
+                        sys.exit(0)
+                elif args[0] == "-outt":
+                        A.out_text(args[1])
+                        sys.exit(0)
+        elif len(args) == 3:
+                if args[0] == "-save":
+                        A.save_webpage(args[1], args[2])
+                        sys.exit(0)
+        
+        elif len(args) == 1:
+                if args[0] == "-h":
+                        print("-h")
+                        print(Help)
+                        sys.exit(0)
+                elif args[0] == "-larch":
+                        print("-larch")
+                        map(lambda x : print(x), A.archived_urls)
+                        sys.exit(0)
+                else:
+                        print("[Error]: Unknown argument \'%s\'" % args[0])
+                        sys.exit(0)
+        else:
+                print("Archiver: No arguments found.\n Type '-h' for help")
+                sys.exit(0)
 		
 if __name__ == "__main__":
-	main()
+        main()
