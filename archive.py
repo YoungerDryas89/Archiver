@@ -113,6 +113,10 @@ def main():
                                 print("[Success]: Archiving is successful")
                         else:
                                 print("[Error]: Archiving failed!")
+				b = list(A.archived_urls[len(A.archived_urls)-1])
+				A.archived_urls.remove(A.archived_urls[len(A.archived_urls)-1])
+				b.insert(0, "FAILED TO ARCHIVE: ")
+				A.archived_urls.append(b)
                         sys.exit(0)
                 elif args[0] == "-charch":
                         main = A.available(args[1])
